@@ -380,6 +380,15 @@ class SuperAdminController extends Controller
                 "Deleted school: {$school->name}",
                 '🗑️'
             );
+
+            // Revoke all active tokens and delete all users belonging to this school.
+            // Users have nullOnDelete() on school_id (so super_admin can have null),
+            // meaning they would survive the school deletion — we must remove them explicitly.
+            $school->users()->each(function (User $user) {
+                $user->tokens()->delete();
+                $user->delete();
+            });
+
             $school->delete();
         });
 
