@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
+use App\Models\School;
 use App\Models\StudentParent;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -21,12 +22,25 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         $request->validate([
-            'email'    => 'required|string',  // accepts email OR 10-digit mobile number
-            'password' => 'required|string',
+            'email'       => 'required|string',  // accepts email OR 10-digit mobile number
+            'password'    => 'required|string',
+            'school_code' => 'nullable|string',
         ]);
 
         $identifier = $request->email;
         $isPhone    = preg_match('/^[0-9]{10}$/', $identifier);
+
+        // Resolve school_id from school_code if provided
+        $schoolId = $request->school_id ?? null;
+        if ($request->filled('school_code')) {
+            $school = School::where('school_code', strtoupper($request->school_code))->first();
+            if (!$school) {
+                throw ValidationException::withMessages([
+                    'school_code' => ['Invalid school code. Please check and try again.'],
+                ]);
+            }
+            $schoolId = $school->id;
+        }
 
         if ($isPhone) {
             // Phone login — for teachers, parents, students, staff
@@ -34,16 +48,16 @@ class AuthController extends Controller
                          ->where('status', 'active')
                          ->whereIn('role', ['teacher', 'parent', 'student', 'staff']);
 
-            if ($request->school_id) {
-                $query->where('school_id', $request->school_id);
+            if ($schoolId) {
+                $query->where('school_id', $schoolId);
             }
         } else {
             // Email login — for admin / super_admin
             $query = User::where('email', $identifier)
                          ->where('status', 'active');
 
-            if ($request->school_id) {
-                $query->where('school_id', $request->school_id);
+            if ($schoolId) {
+                $query->where('school_id', $schoolId);
             }
         }
 
@@ -79,9 +93,10 @@ class AuthController extends Controller
                     'avatar'    => $user->avatar ? asset('storage/'.$user->avatar) : null,
                     'school_id' => $user->school_id,
                     'school'    => $user->school_id ? [
-                        'id'   => $user->school->id,
-                        'name' => $user->school->name,
-                        'logo' => $user->school->logo ? asset('storage/'.$user->school->logo) : null,
+                        'id'          => $user->school->id,
+                        'name'        => $user->school->name,
+                        'school_code' => $user->school->school_code,
+                        'logo'        => $user->school->logo ? asset('storage/'.$user->school->logo) : null,
                     ] : null,
                     'children' => $user->role === 'parent'
                         ? StudentParent::where('user_id', $user->id)

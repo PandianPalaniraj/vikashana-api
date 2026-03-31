@@ -81,7 +81,7 @@ class SettingsController extends Controller
 
         $request->validate([
             'name'     => 'required|string|max:100',
-            'email'    => 'required|email|max:150|unique:users,email',
+            'email'    => ['required','email','max:150', Rule::unique('users')->where('school_id', $schoolId)],
             'password' => 'required|string|min:6|max:50',
             'role'     => 'required|in:admin,teacher,staff',
             'phone'    => [

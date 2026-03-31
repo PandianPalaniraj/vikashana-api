@@ -10,6 +10,17 @@ class School extends Model
 {
     protected static function booted(): void
     {
+        static::creating(function (School $school) {
+            if (!$school->school_code) {
+                $prefix = strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $school->name), 0, 3));
+                if (strlen($prefix) < 2) $prefix = 'SCH';
+                do {
+                    $code = $prefix . rand(1000, 9999);
+                } while (static::where('school_code', $code)->exists());
+                $school->school_code = $code;
+            }
+        });
+
         static::created(function (School $school) {
             Subscription::create([
                 'school_id'      => $school->id,
@@ -24,7 +35,7 @@ class School extends Model
     }
 
     protected $fillable = [
-        'name', 'address', 'phone', 'email',
+        'name', 'school_code', 'address', 'phone', 'email',
         'logo', 'website', 'affiliation_no', 'settings', 'is_active',
     ];
 
