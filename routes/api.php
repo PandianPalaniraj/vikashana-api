@@ -30,7 +30,7 @@ Route::prefix('v1')->group(function () {
 });
 
 // ── Authenticated ─────────────────────────────────────────────
-Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
+Route::prefix('v1')->middleware(['auth:sanctum', 'school.active'])->group(function () {
 
     // Auth
     Route::get ('auth/me',       [AuthController::class, 'me']);

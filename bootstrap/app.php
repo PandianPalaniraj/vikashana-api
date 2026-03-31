@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role'          => \App\Http\Middleware\CheckRole::class,
             'mobile.access' => \App\Http\Middleware\CheckMobileAccess::class,
+            'school.active' => \App\Http\Middleware\CheckSchoolActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

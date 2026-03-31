@@ -69,6 +69,34 @@ class AuthController extends Controller
             ]);
         }
 
+        // Block inactive user accounts
+        if ($user->status !== 'active') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your account has been deactivated.',
+                'code'    => 'ACCOUNT_DEACTIVATED',
+            ], 401);
+        }
+
+        // Block login for deactivated or deleted schools
+        if ($user->school_id) {
+            $school = School::withTrashed()->find($user->school_id);
+            if (!$school || $school->trashed()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'School not found.',
+                    'code'    => 'SCHOOL_NOT_FOUND',
+                ], 401);
+            }
+            if (!$school->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your school account has been deactivated. Please contact Vikashana support.',
+                    'code'    => 'SCHOOL_DEACTIVATED',
+                ], 401);
+            }
+        }
+
         // Update last login
         $user->update(['last_login' => now()]);
 

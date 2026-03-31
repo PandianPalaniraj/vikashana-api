@@ -478,8 +478,18 @@ class SuperAdminController extends Controller
 
     public function toggleStatus(School $school): JsonResponse
     {
-        $school->update(['is_active' => !$school->is_active]);
-        return response()->json(['success' => true, 'message' => $school->is_active ? 'School activated' : 'School deactivated']);
+        $wasActive = $school->is_active;
+        $school->update(['is_active' => !$wasActive]);
+
+        // When deactivating: immediately revoke all tokens so logged-in users are kicked out
+        if ($wasActive) {
+            $school->users()->each(fn(User $u) => $u->tokens()->delete());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $wasActive ? 'School deactivated and all users logged out.' : 'School activated.',
+        ]);
     }
 
     public function schoolStats(School $school): JsonResponse
