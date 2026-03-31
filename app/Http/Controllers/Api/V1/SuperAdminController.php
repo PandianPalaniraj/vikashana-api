@@ -392,9 +392,38 @@ class SuperAdminController extends Controller
         $school->loadCount(['students', 'teachers']);
         $lastLogin = $school->users()->whereNotNull('last_login')->latest('last_login')->value('last_login');
 
+        $adminUser = $school->users()->where('role', 'admin')->first(['id', 'name', 'email', 'phone', 'status', 'last_login']);
+
         return response()->json(['success' => true, 'data' => array_merge($school->toArray(), [
             'last_activity' => $lastLogin,
+            'admin_user'    => $adminUser ? [
+                'id'         => $adminUser->id,
+                'name'       => $adminUser->name,
+                'email'      => $adminUser->email,
+                'phone'      => $adminUser->phone,
+                'status'     => $adminUser->status,
+                'last_login' => $adminUser->last_login?->toISOString(),
+            ] : null,
         ])]);
+    }
+
+    public function resetAdminPassword(Request $request, School $school): JsonResponse
+    {
+        $request->validate(['password' => 'required|string|min:6']);
+
+        $adminUser = $school->users()->where('role', 'admin')->first();
+        if (!$adminUser) {
+            return response()->json(['success' => false, 'message' => 'No admin user found for this school'], 404);
+        }
+
+        $adminUser->update(['password' => $request->password]);
+
+        return response()->json([
+            'success'  => true,
+            'message'  => 'Admin password reset successfully.',
+            'email'    => $adminUser->email,
+            'password' => $request->password,
+        ]);
     }
 
     public function updateSchool(Request $request, School $school): JsonResponse

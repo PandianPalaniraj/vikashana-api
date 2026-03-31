@@ -210,8 +210,9 @@ Route::prefix('superadmin/v1')->middleware(['auth:sanctum', 'role:super_admin'])
     Route::post  ('schools/{school}/toggle-status',   [SuperAdminController::class, 'toggleStatus']);
     Route::get   ('schools/{school}/stats',           [SuperAdminController::class, 'schoolStats']);
     Route::post  ('schools/{school}/subscription',    [SuperAdminController::class, 'createSubscription']);
-    Route::post  ('schools/{school}/impersonate',     [SuperAdminController::class, 'impersonate']);
-    Route::get   ('schools/{school}/timeline',        [SuperAdminController::class, 'timeline']);
+    Route::post  ('schools/{school}/impersonate',          [SuperAdminController::class, 'impersonate']);
+    Route::get   ('schools/{school}/timeline',             [SuperAdminController::class, 'timeline']);
+    Route::post  ('schools/{school}/reset-admin-password', [SuperAdminController::class, 'resetAdminPassword']);
 
     // Subscriptions
     Route::get('subscriptions',                                        [SuperAdminController::class, 'subscriptions']);
