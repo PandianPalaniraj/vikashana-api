@@ -28,6 +28,19 @@ use App\Http\Controllers\Api\V1\SchoolBillingController;
 Route::prefix('v1')->group(function () {
     Route::post('auth/login',         [AuthController::class, 'login']);
     Route::post('auth/select-school', [AuthController::class, 'selectSchool']);
+
+    // Health check — used by monitoring and deploy verification
+    Route::get('health', function () {
+        try { \Illuminate\Support\Facades\DB::connection()->getPdo(); $db = 'connected'; }
+        catch (\Exception $e) { $db = 'error: '.$e->getMessage(); }
+        return response()->json([
+            'success' => true,
+            'status'  => 'healthy',
+            'version' => '1.0.0',
+            'time'    => now()->toISOString(),
+            'db'      => $db,
+        ]);
+    });
 });
 
 // ── Authenticated ─────────────────────────────────────────────
