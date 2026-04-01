@@ -26,7 +26,8 @@ use App\Http\Controllers\Api\V1\SchoolBillingController;
 
 // ── Public ────────────────────────────────────────────────────
 Route::prefix('v1')->group(function () {
-    Route::post('auth/login',  [AuthController::class, 'login']);
+    Route::post('auth/login',         [AuthController::class, 'login']);
+    Route::post('auth/select-school', [AuthController::class, 'selectSchool']);
 });
 
 // ── Authenticated ─────────────────────────────────────────────
