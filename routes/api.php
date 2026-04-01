@@ -227,6 +227,9 @@ Route::prefix('superadmin/v1')->middleware(['auth:sanctum', 'role:super_admin'])
     Route::post  ('schools/{school}/impersonate',          [SuperAdminController::class, 'impersonate']);
     Route::get   ('schools/{school}/timeline',             [SuperAdminController::class, 'timeline']);
     Route::post  ('schools/{school}/reset-admin-password', [SuperAdminController::class, 'resetAdminPassword']);
+    // Deleted school management
+    Route::post  ('schools/{id}/restore',             [SuperAdminController::class, 'restoreSchool']);
+    Route::delete('schools/{id}/purge',               [SuperAdminController::class, 'purgeSchool']);
 
     // Subscriptions
     Route::get('subscriptions',                                        [SuperAdminController::class, 'subscriptions']);

@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ActivityLog extends Model
 {
+    use SoftDeletes;
     protected $fillable = [
         'user_id', 'school_id', 'action', 'module',
         'description', 'icon', 'ip_address', 'user_agent', 'meta',

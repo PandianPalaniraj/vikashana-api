@@ -5,9 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Student extends Model
 {
+    use SoftDeletes;
     protected $fillable = [
         'school_id','user_id','academic_year_id','class_id','section_id',
         'admission_no','name','dob','gender','blood_group','photo',
@@ -30,6 +32,7 @@ class Student extends Model
     public function attendance(): HasMany     { return $this->hasMany(Attendance::class); }
     public function feeInvoices(): HasMany    { return $this->hasMany(FeeInvoice::class); }
     public function marks(): HasMany          { return $this->hasMany(Mark::class); }
+    public function leaves(): HasMany         { return $this->hasMany(StudentLeave::class); }
 
     public function primaryParent(): ?StudentParent {
         return $this->parents()->where('is_primary', true)->first()

@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Subscription extends Model
 {
+    use SoftDeletes;
     protected $fillable = [
         'school_id', 'plan', 'status', 'trial_ends_at',
         'renewal_date', 'amount', 'billing_cycle', 'notes',
@@ -24,10 +26,9 @@ class Subscription extends Model
         'features'           => 'array',
     ];
 
-    public function school()
-    {
-        return $this->belongsTo(School::class);
-    }
+    public function school()    { return $this->belongsTo(School::class); }
+    public function invoices()  { return $this->hasMany(SubscriptionInvoice::class); }
+    public function payments()  { return $this->hasMany(SubscriptionPayment::class); }
 
     // ── Plan limits ────────────────────────────────────────────────────────────
 

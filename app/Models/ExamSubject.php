@@ -1,7 +1,9 @@
 <?php namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ExamSubject extends Model {
+    use SoftDeletes;
     protected $fillable = ['exam_id','subject_id','date','start_time','duration_minutes',
                            'max_marks','pass_marks','venue'];
     protected $casts    = ['date'=>'date','max_marks'=>'decimal:2','pass_marks'=>'decimal:2'];

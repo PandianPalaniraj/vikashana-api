@@ -1,7 +1,9 @@
 <?php namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Homework extends Model {
+    use SoftDeletes;
     protected $table    = 'homework';
     protected $fillable = ['school_id','subject_id','class_id','section_id','teacher_id',
                            'academic_year_id','title','description','assigned_date','due_date',

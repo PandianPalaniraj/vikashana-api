@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Services\SchoolDeletionService;
 use App\Models\AcademicYear;
 use App\Models\ActivityLog;
 use App\Models\Feedback;
@@ -127,9 +128,11 @@ class SuperAdminController extends Controller
     // ── Schools ────────────────────────────────────────────────────────────────
     public function schools(Request $request): JsonResponse
     {
-        $q = School::with('subscription')
-            ->withCount(['students', 'teachers'])
-            ->orderByDesc('created_at');
+        $showDeleted = $request->boolean('deleted');
+
+        $q = $showDeleted
+            ? School::onlyTrashed()->with('subscription')->withCount(['students', 'teachers'])->orderByDesc('deleted_at')
+            : School::with('subscription')->withCount(['students', 'teachers'])->orderByDesc('created_at');
 
         if ($request->filled('search')) {
             $s = $request->search;
@@ -363,36 +366,66 @@ class SuperAdminController extends Controller
 
     public function deleteSchool(Request $request, School $school): JsonResponse
     {
-        $request->validate([
-            'password' => 'required|string',
-        ]);
+        $request->validate(['password' => 'required|string']);
 
         if (!Hash::check($request->password, $request->user()->password)) {
             return response()->json(['success' => false, 'message' => 'Incorrect password.'], 403);
         }
 
-        DB::transaction(function () use ($school, $request) {
-            ActivityLog::log(
-                $request->user()->id,
-                $school->id,
-                'delete',
-                'schools',
-                "Deleted school: {$school->name}",
-                '🗑️'
-            );
+        ActivityLog::log(
+            $request->user()->id,
+            $school->id,
+            'delete',
+            'schools',
+            "Soft-deleted school: {$school->name}",
+            '🗑️'
+        );
 
-            // Revoke all active tokens and delete all users belonging to this school.
-            // Users have nullOnDelete() on school_id (so super_admin can have null),
-            // meaning they would survive the school deletion — we must remove them explicitly.
-            $school->users()->each(function (User $user) {
-                $user->tokens()->delete();
-                $user->delete();
-            });
+        app(SchoolDeletionService::class)->softDelete($school);
 
-            $school->delete();
-        });
+        return response()->json(['success' => true, 'message' => 'School deleted. It can be restored within 30 days.']);
+    }
 
-        return response()->json(['success' => true, 'message' => 'School deleted successfully.']);
+    public function restoreSchool(Request $request, int $id): JsonResponse
+    {
+        $school = School::onlyTrashed()->findOrFail($id);
+
+        ActivityLog::log(
+            $request->user()->id,
+            $school->id,
+            'restore',
+            'schools',
+            "Restored school: {$school->name}",
+            '♻️'
+        );
+
+        app(SchoolDeletionService::class)->restore($school);
+
+        return response()->json(['success' => true, 'message' => 'School restored successfully.']);
+    }
+
+    public function purgeSchool(Request $request, int $id): JsonResponse
+    {
+        $request->validate(['password' => 'required|string']);
+
+        if (!Hash::check($request->password, $request->user()->password)) {
+            return response()->json(['success' => false, 'message' => 'Incorrect password.'], 403);
+        }
+
+        $school = School::onlyTrashed()->findOrFail($id);
+
+        ActivityLog::log(
+            $request->user()->id,
+            $school->id,
+            'purge',
+            'schools',
+            "Permanently purged school: {$school->name}",
+            '💀'
+        );
+
+        app(SchoolDeletionService::class)->hardDelete($school);
+
+        return response()->json(['success' => true, 'message' => 'School permanently deleted. This cannot be undone.']);
     }
 
     public function showSchool(School $school): JsonResponse

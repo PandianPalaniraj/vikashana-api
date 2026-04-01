@@ -1,7 +1,9 @@
 <?php namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class FeeInvoice extends Model {
+    use SoftDeletes;
     protected $fillable = ['school_id','student_id','academic_year_id','invoice_no',
                            'month','items','total','paid','discount','status',
                            'due_date','notes','wa_sent','receipt_sent'];

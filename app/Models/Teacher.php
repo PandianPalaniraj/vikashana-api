@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Teacher extends Model
 {
+    use SoftDeletes;
     protected $fillable = [
         'school_id','user_id','employee_id','name','phone','email','photo',
         'dob','gender','blood_group','designation','department','qualification',

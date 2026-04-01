@@ -1,7 +1,9 @@
 <?php namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class TeacherAttendance extends Model {
+    use SoftDeletes;
     protected $table    = 'teacher_attendance';
     protected $fillable = ['school_id','teacher_id','date','status','note','marked_by'];
     protected $casts    = ['date'=>'date'];

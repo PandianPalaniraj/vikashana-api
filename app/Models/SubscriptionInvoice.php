@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SubscriptionInvoice extends Model
 {
+    use SoftDeletes;
     protected $fillable = [
         'school_id','subscription_id','invoice_no',
         'period_label','period_start','period_end',

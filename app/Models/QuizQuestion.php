@@ -1,7 +1,9 @@
 <?php namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class QuizQuestion extends Model {
+    use SoftDeletes;
     protected $table    = 'quiz_questions';
     protected $fillable = ['school_id','class_id','subject_id','question',
                            'option_a','option_b','option_c','option_d',
