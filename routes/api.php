@@ -148,6 +148,7 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'school.active'])->group(functi
 
     // Parents (mobile app — requires mobile_enabled subscription)
     Route::middleware('mobile.access')->group(function () {
+        Route::get('parents/students',                       [ParentController::class, 'getMyStudents']);
         Route::get('parents/my-children',                   [ParentController::class, 'myChildren']);
         Route::get('parents/student/{studentId}/dashboard', [ParentController::class, 'studentDashboard']);
     });
@@ -227,6 +228,7 @@ Route::prefix('superadmin/v1')->middleware(['auth:sanctum', 'role:super_admin'])
     Route::post  ('schools/{school}/impersonate',          [SuperAdminController::class, 'impersonate']);
     Route::get   ('schools/{school}/timeline',             [SuperAdminController::class, 'timeline']);
     Route::post  ('schools/{school}/reset-admin-password', [SuperAdminController::class, 'resetAdminPassword']);
+    Route::get   ('schools/{school}/users',               [SuperAdminController::class, 'schoolUsers']);
     // Deleted school management
     Route::post  ('schools/{id}/restore',             [SuperAdminController::class, 'restoreSchool']);
     Route::delete('schools/{id}/purge',               [SuperAdminController::class, 'purgeSchool']);

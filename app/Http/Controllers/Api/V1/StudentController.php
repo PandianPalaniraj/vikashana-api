@@ -154,28 +154,28 @@ class StudentController extends Controller
                 ->first();
 
             if ($existingParent) {
-                // Reset password to new child's DOB so the student detail "Initial Password" is always valid
-                $existingParent->update(['password' => $dobPassword]);
+                // Parent exists — link student only, NEVER update password
                 $parentUser  = $existingParent;
                 $credentials = [
                     'username'      => $validated['parent_phone'],
-                    'temp_password' => $dobPassword,
-                    'note'          => 'Existing parent account. Password reset to this child\'s DOB.',
+                    'temp_password' => '(unchanged — use existing password)',
+                    'note'          => 'Existing parent account. Password was set on first registration and has not been changed.',
                 ];
             } else {
                 $parentUser = User::create([
-                    'school_id' => $schoolId,
-                    'name'      => $validated['parent_name'],
-                    'email'     => null,
-                    'phone'     => $validated['parent_phone'],
-                    'password'  => $dobPassword,
-                    'role'      => 'parent',
-                    'status'    => 'active',
+                    'school_id'     => $schoolId,
+                    'name'          => $validated['parent_name'],
+                    'email'         => null,
+                    'phone'         => $validated['parent_phone'],
+                    'password'      => $dobPassword,
+                    'plain_password'=> encrypt($dobPassword),
+                    'role'          => 'parent',
+                    'status'        => 'active',
                 ]);
                 $credentials = [
                     'username'      => $validated['parent_phone'],
                     'temp_password' => $dobPassword,
-                    'note'          => 'Parent logs in with mobile number. Initial password is child\'s DOB (ddmmyyyy).',
+                    'note'          => 'Parent logs in with mobile number. Initial password is child\'s DOB (ddmmyyyy). Password will never change.',
                 ];
             }
 

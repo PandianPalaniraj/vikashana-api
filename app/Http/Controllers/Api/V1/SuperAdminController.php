@@ -180,14 +180,18 @@ class SuperAdminController extends Controller
                 ]);
             }
 
-            // Create default admin user for the school
+            // Create default admin user with encrypted plain password stored
+            $plainPassword = 'School@' . rand(1000, 9999);
+            $school->update(['admin_plain_password' => encrypt($plainPassword)]);
+
             User::create([
-                'name'      => $validated['name'] . ' Admin',
-                'email'     => $validated['email'],
-                'password'  => 'password123',
-                'role'      => 'admin',
-                'school_id' => $school->id,
-                'status'    => 'active',
+                'name'           => $validated['name'] . ' Admin',
+                'email'          => $validated['email'],
+                'password'       => $plainPassword,
+                'plain_password' => encrypt($plainPassword),
+                'role'           => 'admin',
+                'school_id'      => $school->id,
+                'status'         => 'active',
             ]);
 
             return $school;
@@ -263,14 +267,17 @@ class SuperAdminController extends Controller
                 ? $data['admin_name']
                 : $data['principal_name'];
 
+            $school->update(['admin_plain_password' => encrypt($password)]);
+
             $admin = User::create([
-                'school_id' => $school->id,
-                'name'      => $adminName,
-                'email'     => $data['admin_email'],
-                'password'  => $password,
-                'role'      => 'admin',
-                'status'    => 'active',
-                'phone'     => $data['principal_phone'] ?? $data['phone'],
+                'school_id'      => $school->id,
+                'name'           => $adminName,
+                'email'          => $data['admin_email'],
+                'password'       => $password,
+                'plain_password' => encrypt($password),
+                'role'           => 'admin',
+                'status'         => 'active',
+                'phone'          => $data['principal_phone'] ?? $data['phone'],
             ]);
 
             // 3. Upsert subscription with billing cycle + amount calculation
@@ -434,11 +441,21 @@ class SuperAdminController extends Controller
         $school->loadCount(['students', 'teachers']);
         $lastLogin = $school->users()->whereNotNull('last_login')->latest('last_login')->value('last_login');
 
-        $adminUser = $school->users()->where('role', 'admin')->first(['id', 'name', 'email', 'phone', 'status', 'last_login']);
+        $adminUser = $school->users()->where('role', 'admin')->first(['id', 'name', 'email', 'phone', 'status', 'last_login', 'plain_password']);
+
+        $adminPassword = null;
+        if ($adminUser?->plain_password) {
+            try { $adminPassword = decrypt($adminUser->plain_password); } catch (\Exception $e) {}
+        }
+        // Fallback: try school-level stored password
+        if (!$adminPassword && $school->admin_plain_password) {
+            try { $adminPassword = decrypt($school->admin_plain_password); } catch (\Exception $e) {}
+        }
 
         return response()->json(['success' => true, 'data' => array_merge($school->toArray(), [
-            'last_activity' => $lastLogin,
-            'admin_user'    => $adminUser ? [
+            'last_activity'  => $lastLogin,
+            'admin_password' => $adminPassword,
+            'admin_user'     => $adminUser ? [
                 'id'         => $adminUser->id,
                 'name'       => $adminUser->name,
                 'email'      => $adminUser->email,
@@ -447,6 +464,37 @@ class SuperAdminController extends Controller
                 'last_login' => $adminUser->last_login?->toISOString(),
             ] : null,
         ])]);
+    }
+
+    public function schoolUsers(School $school): JsonResponse
+    {
+        $users = $school->users()
+            ->orderBy('role')
+            ->orderBy('name')
+            ->get()
+            ->map(function (User $user) {
+                $plain = null;
+                if ($user->plain_password) {
+                    try { $plain = decrypt($user->plain_password); } catch (\Exception $e) {}
+                }
+                return [
+                    'id'             => $user->id,
+                    'name'           => $user->name,
+                    'email'          => $user->email,
+                    'phone'          => $user->phone,
+                    'role'           => $user->role,
+                    'status'         => $user->status,
+                    'plain_password' => $plain,
+                    'last_login'     => $user->last_login?->toISOString(),
+                    'created_at'     => $user->created_at?->toISOString(),
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data'    => $users,
+            'total'   => $users->count(),
+        ]);
     }
 
     public function resetAdminPassword(Request $request, School $school): JsonResponse

@@ -39,6 +39,7 @@ class School extends Model
     protected $fillable = [
         'name', 'school_code', 'address', 'phone', 'email',
         'logo', 'website', 'affiliation_no', 'settings', 'is_active',
+        'admin_plain_password',
     ];
 
     protected $casts = [

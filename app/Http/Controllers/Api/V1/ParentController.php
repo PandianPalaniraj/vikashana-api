@@ -7,12 +7,68 @@ use App\Models\Exam;
 use App\Models\Homework;
 use App\Models\StudentLeave;
 use App\Models\StudentParent;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ParentController extends Controller
 {
+    /**
+     * GET /api/v1/parents/students
+     * Returns all students for this parent across ALL schools (by matching phone).
+     * Used by the multi-student/school switcher — no re-login required.
+     */
+    public function getMyStudents(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_if($user->role !== 'parent', 403, 'Forbidden');
+
+        // Find all parent accounts sharing this phone number across schools
+        $parentAccounts = User::where('phone', $user->phone)
+            ->where('role', 'parent')
+            ->where('status', 'active')
+            ->with('school:id,name,school_code,logo')
+            ->get();
+
+        $studentsBySchool = $parentAccounts->map(function (User $account) {
+            $students = StudentParent::where('user_id', $account->id)
+                ->with([
+                    'student.schoolClass:id,name',
+                    'student.section:id,name',
+                ])
+                ->get()
+                ->filter(fn($p) => $p->student !== null)
+                ->map(fn($p) => [
+                    'id'       => $p->student->id,
+                    'name'     => $p->student->name,
+                    'class'    => $p->student->schoolClass->name ?? null,
+                    'section'  => $p->student->section->name ?? null,
+                    'photo'    => $p->student->photo ? asset('storage/' . $p->student->photo) : null,
+                    'roll_no'  => $p->student->roll_no ?? null,
+                    'status'   => $p->student->status,
+                    'relation' => $p->relation,
+                ])
+                ->values();
+
+            return [
+                'school_id'   => $account->school_id,
+                'school_name' => $account->school->name ?? null,
+                'school_code' => $account->school->school_code ?? null,
+                'school_logo' => $account->school->logo ? asset('storage/' . $account->school->logo) : null,
+                'parent_id'   => $account->id,
+                'is_current'  => $account->id === request()->user()->id,
+                'students'    => $students,
+            ];
+        })->filter(fn($s) => count($s['students']) > 0)->values();
+
+        return response()->json([
+            'success' => true,
+            'data'    => $studentsBySchool,
+            'total'   => $studentsBySchool->sum(fn($s) => count($s['students'])),
+        ]);
+    }
+
     /**
      * GET /api/v1/parents/my-children
      * Returns all students linked to this parent user.
