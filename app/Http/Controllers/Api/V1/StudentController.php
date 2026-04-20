@@ -87,11 +87,17 @@ class StudentController extends Controller
             'section_id'       => 'required|exists:sections,id',
             'academic_year_id' => 'required|exists:academic_years,id',
             'photo'            => 'nullable|image|max:2048',
+            'documents.*'      => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:5120',
             // Parent fields
             'parent_name'      => 'required|string',
             'parent_phone'     => 'required|string|max:20',
             'parent_email'     => 'nullable|email',
             'parent_relation'  => 'nullable|string',
+        ], [
+            'photo.max'            => 'Photo must be under 2 MB.',
+            'photo.image'          => 'Photo must be a valid image (jpg, png, gif, etc.).',
+            'documents.*.max'      => 'Each document must be under 5 MB.',
+            'documents.*.mimes'    => 'Documents must be PDF, Word, or image files.',
         ]);
 
         $credentials = [];
@@ -243,10 +249,16 @@ class StudentController extends Controller
             'class_id'        => 'sometimes|exists:classes,id',
             'section_id'      => 'sometimes|exists:sections,id',
             'photo'           => 'nullable|image|max:2048',
+            'documents.*'     => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:5120',
             'parent_name'     => 'sometimes|string',
             'parent_phone'    => 'sometimes|string|max:20',
             'parent_email'    => 'nullable|email',
             'parent_relation' => 'nullable|string',
+        ], [
+            'photo.max'         => 'Photo must be under 2 MB.',
+            'photo.image'       => 'Photo must be a valid image (jpg, png, gif, etc.).',
+            'documents.*.max'   => 'Each document must be under 5 MB.',
+            'documents.*.mimes' => 'Documents must be PDF, Word, or image files.',
         ]);
 
         // Handle photo upload
