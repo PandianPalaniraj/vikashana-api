@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
 use App\Models\Homework;
 use App\Models\Student;
 use App\Models\Teacher;
@@ -97,9 +98,29 @@ class HomeworkController extends Controller
             $teacherId = $teacher?->id;
         }
 
+        // Auto-resolve current academic year (required, non-null column)
+        $academicYear = AcademicYear::where('school_id', $schoolId)
+            ->where('is_current', true)
+            ->first()
+            ?? AcademicYear::where('school_id', $schoolId)
+                ->where('start_date', '<=', now())
+                ->where('end_date',   '>=', now())
+                ->first()
+            ?? AcademicYear::where('school_id', $schoolId)
+                ->orderByDesc('start_date')
+                ->first();
+
+        if (! $academicYear) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No active academic year found. Please contact your admin to set up the current academic year.',
+                'code'    => 'NO_ACADEMIC_YEAR',
+            ], 422);
+        }
+
         $hw = Homework::create([
             'school_id'        => $schoolId,
-            'academic_year_id' => null,
+            'academic_year_id' => $academicYear->id,
             'subject_id'       => $request->subject_id,
             'class_id'         => $request->class_id,
             'section_id'       => $request->section_id,

@@ -64,7 +64,7 @@ class ExamController extends Controller
 
         if ($request->filled('class_id'))         $query->where('class_id',         $request->class_id);
         if ($request->filled('academic_year_id')) $query->where('academic_year_id', $request->academic_year_id);
-        if ($request->filled('status'))           $query->where('status',           $request->status);
+        if ($request->filled('status'))           $query->withStatus($request->status);
 
         $exams = $query->get()->map(fn($e) => $this->fmtList($e))->values();
 
@@ -83,9 +83,9 @@ class ExamController extends Controller
             'class_id'         => 'required|exists:classes,id',
             'start_date'       => 'nullable|date',
             'end_date'         => 'nullable|date|after_or_equal:start_date',
-            'status'           => 'nullable|in:Upcoming,Ongoing,Completed',
         ]);
 
+        // Status is auto-computed from dates in the Exam model accessor.
         $exam = Exam::create([
             'school_id'        => $schoolId,
             'academic_year_id' => $request->academic_year_id,
@@ -94,7 +94,7 @@ class ExamController extends Controller
             'type'             => $request->type,
             'start_date'       => $request->start_date,
             'end_date'         => $request->end_date,
-            'status'           => $request->input('status', 'Upcoming'),
+            'status'           => 'Upcoming',
         ]);
 
         $exam->load(['schoolClass:id,name', 'academicYear:id,name']);
@@ -119,8 +119,7 @@ class ExamController extends Controller
             'name'       => 'sometimes|required|string|max:200',
             'type'       => 'sometimes|required|in:Unit Test,Mid Term,Final,Board,Internal,Other',
             'start_date' => 'nullable|date',
-            'end_date'   => 'nullable|date',
-            'status'     => 'nullable|in:Upcoming,Ongoing,Completed',
+            'end_date'   => 'nullable|date|after_or_equal:start_date',
         ]);
 
         $data = [];
@@ -128,13 +127,13 @@ class ExamController extends Controller
         if ($request->has('type'))       $data['type']       = $request->type;
         if ($request->has('start_date')) $data['start_date'] = $request->start_date;
         if ($request->has('end_date'))   $data['end_date']   = $request->end_date;
-        if ($request->has('status'))     $data['status']     = $request->status;
 
-        $wasCompleted = $exam->status !== 'Completed';
+        $wasCompleted = $exam->status === 'Completed';
         $exam->update($data);
+        $newlyCompleted = !$wasCompleted && $exam->fresh()->status === 'Completed';
 
-        // Push notification: when exam is marked Completed (results published)
-        if ($wasCompleted && ($data['status'] ?? '') === 'Completed') {
+        // Push notification: when exam transitions into Completed (end_date passed)
+        if ($newlyCompleted) {
             try {
                 $exam->load('schoolClass');
                 $classId = $exam->class_id;

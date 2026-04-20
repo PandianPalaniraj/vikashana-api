@@ -7,6 +7,7 @@ use App\Models\AcademicYear;
 use App\Models\Attendance;
 use App\Models\StudentLeave;
 use App\Models\StudentParent;
+use App\Models\Teacher;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -63,6 +64,19 @@ class LeaveController extends Controller
                 $query->whereIn('student_id', $ownedIds);
             }
         } else {
+            // Teachers only see leaves for students in their assigned classes
+            $teacherClassIds = null;
+            if ($user->role === 'teacher') {
+                $teacher = Teacher::where('user_id', $user->id)->where('school_id', $schoolId)->first();
+                $teacherClassIds = $teacher?->classes_list ?? [];
+                if (empty($teacherClassIds)) {
+                    // No assigned classes → show nothing
+                    $query->whereRaw('1 = 0');
+                } else {
+                    $query->whereHas('student', fn($q) => $q->whereIn('class_id', $teacherClassIds));
+                }
+            }
+
             if ($request->filled('status'))     $query->where('status',     $request->status);
             if ($request->filled('student_id')) $query->where('student_id', $request->student_id);
             if ($request->filled('class_id')) {
@@ -79,6 +93,11 @@ class LeaveController extends Controller
         $summary = [];
         if ($user->role !== 'parent') {
             $base = StudentLeave::where('school_id', $schoolId);
+            if ($user->role === 'teacher' && !empty($teacherClassIds)) {
+                $base = $base->whereHas('student', fn($q) => $q->whereIn('class_id', $teacherClassIds));
+            } elseif ($user->role === 'teacher') {
+                $base = $base->whereRaw('1 = 0');
+            }
             $summary = [
                 'total'    => (clone $base)->count(),
                 'pending'  => (clone $base)->where('status', 'Pending')->count(),

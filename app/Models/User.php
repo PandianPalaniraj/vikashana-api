@@ -15,14 +15,16 @@ class User extends Authenticatable
     protected $fillable = [
         'school_id', 'name', 'email', 'phone',
         'password', 'plain_password', 'role', 'avatar', 'status', 'last_login', 'settings',
+        'notifications_last_seen_at',
     ];
 
     protected $hidden = ['password', 'remember_token'];
 
     protected $casts = [
-        'password'   => 'hashed',
-        'last_login' => 'datetime',
-        'settings'   => 'array',
+        'password'                   => 'hashed',
+        'last_login'                 => 'datetime',
+        'notifications_last_seen_at' => 'datetime',
+        'settings'                   => 'array',
     ];
 
     // Roles

@@ -168,8 +168,11 @@ Route::prefix('v1')->middleware(['auth:sanctum', 'school.active'])->group(functi
     Route::get('my-invoices', [\App\Http\Controllers\Api\V1\SchoolBillingController::class, 'myInvoices']);
 
     // Notifications
-    Route::get('notifications',         [NotificationController::class,         'index']);
-    Route::get('system-announcements',  [SystemAnnouncementController::class,   'index']);
+    Route::get ('notifications',                [NotificationController::class,         'index']);
+    Route::get ('notifications/unread-count',   [NotificationController::class,         'getUnreadCount']);
+    Route::post('notifications/read-all',       [NotificationController::class,         'markAllAsRead']);
+    Route::post('notifications/{id}/read',      [NotificationController::class,         'markAsRead']);
+    Route::get ('system-announcements',         [SystemAnnouncementController::class,   'index']);
 
     // Push tokens
     Route::post  ('push-tokens', [PushTokenController::class, 'store']);

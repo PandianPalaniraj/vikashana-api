@@ -11,6 +11,7 @@ use App\Models\FeeInvoice;
 use App\Models\Homework;
 use App\Models\SchoolClass;
 use App\Models\Student;
+use App\Models\StudentLeave;
 use App\Models\StudentParent;
 use App\Models\Teacher;
 use Carbon\Carbon;
@@ -122,12 +123,11 @@ class NotificationController extends Controller
 
             // 5. Upcoming exams in next 7 days
             $upcomingExams = Exam::where('school_id', $schoolId)
-                ->where('status', 'Upcoming')
                 ->whereBetween('start_date', [today(), today()->addDays(7)])
                 ->count();
             if ($upcomingExams > 0) {
                 $nextExam = Exam::where('school_id', $schoolId)
-                    ->where('status', 'Upcoming')
+                    ->where('start_date', '>=', today())
                     ->orderBy('start_date')->first();
                 $notifs->push([
                     'id'     => 'upcoming_exams',
@@ -265,11 +265,15 @@ class NotificationController extends Controller
                     ]);
                 }
 
-                // Pending leave requests for teacher's review
-                $pendingLeaves = DB::table('student_leaves')
-                    ->where('school_id', $schoolId)
-                    ->where('status', 'Pending')
-                    ->count();
+                // Pending leave requests for teacher's assigned classes only
+                $classIds = $teacher->classes_list ?? [];
+                $pendingLeaves = 0;
+                if (!empty($classIds)) {
+                    $pendingLeaves = StudentLeave::where('school_id', $schoolId)
+                        ->where('status', 'Pending')
+                        ->whereHas('student', fn($q) => $q->whereIn('class_id', $classIds))
+                        ->count();
+                }
                 if ($pendingLeaves > 0) {
                     $notifs->push([
                         'id'     => 'teacher_pending_leaves',
@@ -281,6 +285,7 @@ class NotificationController extends Controller
                         'unread' => true,
                         'type'   => 'leave',
                         'link'   => '/leaves',
+                        'data'   => ['filter' => 'pending'],
                     ]);
                 }
             }
@@ -457,7 +462,6 @@ class NotificationController extends Controller
 
                 // Upcoming exams (next 7 days)
                 $exam = Exam::where('class_id', $student->class_id)
-                    ->where('status', 'Upcoming')
                     ->where('start_date', '>=', today())
                     ->orderBy('start_date')->first();
                 if ($exam) {
@@ -518,10 +522,70 @@ class NotificationController extends Controller
             }
         }
 
+        // If user recently marked all as read, zero-out the unread flag
+        $lastSeen = $user->notifications_last_seen_at;
+        if ($lastSeen && $lastSeen->greaterThanOrEqualTo(today())) {
+            $notifs = $notifs->map(function ($n) {
+                $n['unread'] = false;
+                return $n;
+            });
+            $unreadCount = 0;
+        } else {
+            $unreadCount = $notifs->where('unread', true)->count();
+        }
+
         return response()->json([
             'success'      => true,
             'data'         => $notifs->values(),
-            'unread_count' => $notifs->where('unread', true)->count(),
+            'unread_count' => $unreadCount,
+        ]);
+    }
+
+    public function markAsRead(Request $request, $id): JsonResponse
+    {
+        // Notifications are computed in-memory; a per-item read marker isn't
+        // persisted, so this endpoint just updates the "last seen" timestamp
+        // so the badge decrements on the next index() call.
+        $user = $request->user();
+        $user->update(['notifications_last_seen_at' => now()]);
+
+        return response()->json([
+            'success'      => true,
+            'message'      => 'Notification marked as read',
+            'unread_count' => 0,
+        ]);
+    }
+
+    public function markAllAsRead(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $user->update(['notifications_last_seen_at' => now()]);
+
+        return response()->json([
+            'success'      => true,
+            'message'      => 'All notifications marked as read',
+            'unread_count' => 0,
+        ]);
+    }
+
+    public function getUnreadCount(Request $request): JsonResponse
+    {
+        $user     = $request->user();
+        $lastSeen = $user->notifications_last_seen_at;
+
+        // If the user marked all as read today, the badge should stay at 0
+        // until the next calendar day (when new notifications roll in).
+        if ($lastSeen && $lastSeen->greaterThanOrEqualTo(today())) {
+            return response()->json(['success' => true, 'count' => 0]);
+        }
+
+        // Otherwise re-run index() logic to count unread items
+        $response = $this->index($request);
+        $payload  = $response->getData(true);
+
+        return response()->json([
+            'success' => true,
+            'count'   => $payload['unread_count'] ?? 0,
         ]);
     }
 }
